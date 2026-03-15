@@ -1,7 +1,10 @@
 
+from email.message import Message
 import os
-import requests
-import time
+import asyncio
+import websockets
+import json
+from datetime import datetime, timezone
 from write_csv import write_csv
 from dotenv import load_dotenv
 
@@ -9,32 +12,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("MARINE_API_KEY")
+API_KEY = os.getenv("AIS_API_KEY")
+AIS_URL = os.getenv("AIS_URL")
 
-url = f"https://api.marinesia.com/api/v1/vessel/357285000/location/latest?key={API_KEY}"
+async def connect_and_stream():
+    async with websockets.connect(AIS_URL) as websocket:
+        await websocket.send(json.dumps({"type": "auth", "token": API_KEY}))
+        subscribe_message = {"APIKey":API_KEY,
+                             "BoundingBoxes" : [[[25.2732,55.1647],[27.3713,57.3419]]],
+                              "FilterMessageTypes" : ["PositionReport"] }
+        subscribe_message_json = json.dumps(subscribe_message)
+        await websocket.send(subscribe_message_json)
 
-while True:
-    try:
-        response = requests.get(url)
-        result = response.json()
+        async for message_json in websocket:
+            message = json.loads(message_json)
+            message_type = message("MessageType")
+            if message_type == "PositionReport":
 
-        if result.get("error") == False and "data" in result:
-            ship = result["data"]
+                ais_messsage = message['Message']['PositionReport']
+                print(f"[{datetime.now(timezone.utc)}] ShipId: {ais_message['UserID']} Latitude: {ais_message['Latitude']} Latitude: {ais_message['Longitude']}")
 
-            mmsi = ship.get("mmsi")
-            lat = ship.get("lat")
-            lon = ship.get("lng")
-            speed = ship.get("sog")
-            destination = ship.get("dest")
-            time_stamp = ship.get("ts")
 
-            print(f"MMSI : {mmsi}, LATITUDE : {lat}, Longitude : {lon}, Speed : {speed}, Destination : {destination}, Time : {time_stamp}")
-
-            write_csv(mmsi, lat, lon, speed, destination, time_stamp)  
-
-    except Exception as e:
-            log_file = "error_log.txt"
-            with open(log_file, "a") as log:
-                log.write(f"Error writing to CSV: {e}\n")
-
-    time.sleep(1800)  # wait 30 minutes before the next request
+if __name__ == "__main__":
+    asyncio.run(connect_and_stream())

@@ -1,0 +1,14 @@
+#api keys
+api_key.txt
+.env
+
+#pycache
+__pycache__/
+*.pyc
+
+#logs
+*.log
+error_log.txt
+
+# output data
+crawl_output/
