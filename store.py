@@ -11,31 +11,37 @@ conn_string = os.getenv("DATABASE_URL")
 
 consumer = KafkaConsumer(
     "ais_positions",
-    bootstrap_servers="localhost:9092",
+    bootstrap_servers=os.getenv("DB_HOST"),
     value_deserializer=lambda m: json.loads(m.decode("utf-8"))
 )
 
 
 
-conn = psycopg2.connect(
-    dbname="ais",
-    user="postgres",
-    password="postgres",
-    host="localhost"
-)
+conn = psycopg2.connect(conn_string)
 
 cur = conn.cursor()
 
 for msg in consumer:
-    data = msg.value
+    try: 
+        data = msg.value
+        
+        report = data.get("Message", {}).get("PositionReport", {})
+        lat = report.get("Latitude")
+        lon = report.get("Longitude")
+        mmsi = report.get("UserID")     
 
-    lat = data["lat"]
-    lon = data["lon"]
-    mmsi = data["mmsi"]
 
-    cur.execute(
-        "INSERT INTO vessel_positions VALUES (NOW(), %s, %s, %s)",
-        (mmsi, lat, lon)
-    )
+        #Create the table to store vessel positions
+        cur.execute(
+            """
+            INSERT INTO vessel_positions (time,mmsi, latitude, longitude)
+            VALUES (NOW (), %s, %s, %s)
+            """,
+            (mmsi, lat, lon)
+        )
+        
+        conn.commit()
 
-    conn.commit()
+    except EXCEPTION as e:
+        print(f"Error:", e)
+        conn.rollback()
