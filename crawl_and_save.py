@@ -3,9 +3,10 @@ import asyncio
 import websockets
 import json
 from datetime import datetime, timezone
-from write_csv import write_csv
 from dotenv import load_dotenv
-from kafka import KafkaProducer
+import redis
+
+#from kafka import KafkaProducer
 
 
 load_dotenv()
@@ -13,11 +14,14 @@ load_dotenv()
 API_KEY = os.getenv("AIS_API_KEY")
 
 
-producer = KafkaProducer(
-    bootstrap_servers = "localhost:9092",
-    value_serializer = lambda v : json.dumps(v).encode("utf-8")
-)
+#producer = KafkaProducer(
+#   bootstrap_servers = "localhost:9092",
+#    value_serializer = lambda v : json.dumps(v).encode("utf-8")
+#)
 
+r = redis.Redis(host='localhost', port=6379, db=0)
+
+QUEUE_NAME = "ais_queue"
 
 async def connect_and_stream():
     async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
@@ -49,7 +53,7 @@ async def connect_and_stream():
                 if not (mmsi and lat and lon):
                     continue
 
-                #clean payload for kafka
+                #clean payload for redis
                 payload = {
                     "mmsi": mmsi,
                     "latitude": lat,
@@ -57,9 +61,9 @@ async def connect_and_stream():
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 }
 
-                producer.send("ais_positions", payload)
-                producer.flush()
-                print (f"Sent position report to Kafka: {payload}"
+                # Push to redis queue
+                r.rpush(QUEUE_NAME, json.dumps(payload))
+                print (f"Sent position report to Redis : {payload}"
                        )
                 
             except Exception as e:

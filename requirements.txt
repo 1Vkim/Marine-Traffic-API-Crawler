@@ -3,3 +3,4 @@ python-dotenv
 websockets
 kafka-python
 psycopg2-binary
+redis
