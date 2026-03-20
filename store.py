@@ -33,23 +33,23 @@ while True:
     try: 
         data = json.loads(message)
         
-        report = data.get("Message", {}).get("PositionReport", {})
-        lat = report.get("Latitude")
-        lon = report.get("Longitude")
-        mmsi = report.get("UserID")     
+        time = data.get("time")
+        lat = data.get("Latitude")
+        lon = data.get("Longitude")
+        mmsi = data.get("UserID")     
 
 
         #Create the table to store vessel positions
         cur.execute(
             """
-            INSERT INTO vessel_positions (time,mmsi, latitude, longitude)
-            VALUES (NOW (), %s, %s, %s)
+            INSERT INTO vessel_positions (time_stamp,mmsi, latitude, longitude)
+            VALUES (%s , %s, %s, %s)
             """,
-            (mmsi, lat, lon)
+            (time, mmsi, lat, lon)
         )
         
         conn.commit()
 
-    except EXCEPTION as e:
+    except Exception as e:
         print(f"Error:", e)
         conn.rollback()
