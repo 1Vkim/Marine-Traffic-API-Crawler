@@ -30,26 +30,32 @@ cur = conn.cursor()
 
 while True:
     _, message = r.blpop(QUEUE_NAME) #Waits for data to be available in the Redis queue
+  
     try: 
+        message = message.decode("utf-8") #Decode the message from bytes to string
         data = json.loads(message)
         
-        time = data.get("time")
-        lat = data.get("Latitude")
-        lon = data.get("Longitude")
-        mmsi = data.get("UserID")     
+        print(f"Received data from Redis: {data}")
+        ship_name = data.get("ship_name")
+        speed = data.get("speed")
+        time = data.get("timestamp")
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+        mmsi = data.get("mmsi")     
 
 
-        #Create the table to store vessel positions
+        #Insert data into the table to store vessel positions
         cur.execute(
             """
-            INSERT INTO vessel_positions (time_stamp,mmsi, latitude, longitude)
-            VALUES (%s , %s, %s, %s)
+            INSERT INTO vessel_positions (ship_name,time_stamp,mmsi,speed, latitude, longitude)
+            VALUES (%s , %s, %s, %s, %s, %s)
             """,
-            (time, mmsi, lat, lon)
+            (ship_name, time, mmsi, speed, lat, lon)
         )
         
         conn.commit()
 
     except Exception as e:
-        print(f"Error:", e)
-        conn.rollback()
+        with open("crawler-with-selenium/error_log.txt", "a") as f:
+            f.write(f"Error inserting data into database: {e}\n")
+      
