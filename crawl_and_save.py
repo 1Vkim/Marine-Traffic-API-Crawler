@@ -74,7 +74,8 @@ async def connect_and_stream():
                     
                 
                 except Exception as e:
-                    print(f"Error pushing to Redis: {e}")
+                    with open("crawler-with-selenium/error_log.txt", "a") as f:
+                         f.write(f"Error pushing to Redis: {e}\n")
                 
             except Exception as e:
                 with open("crawler-with-selenium/error_log.txt", "a") as f:
