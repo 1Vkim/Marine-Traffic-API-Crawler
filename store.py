@@ -13,18 +13,21 @@ conn_string = os.getenv("DATABASE_URL")
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 QUEUE_NAME = "ais_queue"
-
-#consumer = KafkaConsumer(
-#    "ais_positions",
-#    bootstrap_servers=os.getenv("DB_HOST"),
-#    value_deserializer=lambda m: json.loads(m.decode("utf-8"))
-#)
-
-
-
-
-#Connecting to the Neon Database and inserting data from Redis
-conn = psycopg2.connect(conn_string)
+ERROR_LOG  = os.path.join(os.path.dirname(__file__), "error_log.txt")
+ 
+def get_db_connection():
+    """Create a new DB connection with retries."""
+    while True:
+        try:
+            conn = psycopg2.connect(conn_string)
+            print("Database connected.")
+            return conn
+        except Exception as e:
+            print(f"DB connection failed: {e}. Retrying in 5s...")
+            time.sleep(5)
+ 
+ #Connect to the database and create a cursor for executing queries
+conn = get_db_connection()
 
 cur = conn.cursor()
 
@@ -35,7 +38,7 @@ while True:
         message = message.decode("utf-8") #Decode the message from bytes to string
         data = json.loads(message)
         
-        print(f"Received data from Redis: {data}")
+        #print(f"Received data from Redis: {data}")
         ship_name = data.get("ship_name")
         speed = data.get("speed")
         time = data.get("timestamp")
@@ -55,7 +58,18 @@ while True:
         
         conn.commit()
 
+    except psycopg2.OperationalError as e:
+        # SSL dropped or connection lost — reconnect
+        print(f"DB connection lost: {e}. Reconnecting...")
+        try:
+            conn.close()
+        except Exception:
+            pass
+        conn = get_db_connection()
+        cur  = conn.cursor()
+ 
     except Exception as e:
-        with open("crawler-with-selenium/error_log.txt", "a") as f:
-            f.write(f"Error inserting data into database: {e}\n")
+        print(f"Error: {e}")
+        with open(ERROR_LOG, "a") as f:
+            f.write(f"Error inserting data: {e}\n")
       
