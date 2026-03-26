@@ -1,11 +1,10 @@
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXIST timescaledb;
-
+-- SQL schema for storing vessel positions
 CREATE TABLE vessel_positions (
-    time TIMESTAMPTZ NOT NULL,
+    id SERIAL PRIMARY KEY,
+    ship_name VARCHAR(255),
+    time_stamp TIMESTAMPTZ DEFAULT NOW(),
     mmsi BIGINT NOT NULL,
+    speed DOUBLE PRECISION NOT NULL,
     latitude DOUBLE PRECISION NOT NULL,
     longitude DOUBLE PRECISION NOT NULL
 );
-
-SELECT create_hypertable('vessel_positions', 'time');
