@@ -74,7 +74,7 @@ This design improves reliability and scalability.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ais-vessel-tracking-pipeline.git
+git clone https://github.com/1Vkim/Marine-Traffic-API-Crawler
 cd ais-vessel-tracking-pipeline
 ```
 
